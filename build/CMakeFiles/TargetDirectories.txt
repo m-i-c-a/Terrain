@@ -1,3 +1,3 @@
-/home/mica/Desktop/UTD/Geometry-Clipmaps/build/CMakeFiles/rebuild_cache.dir
-/home/mica/Desktop/UTD/Geometry-Clipmaps/build/CMakeFiles/edit_cache.dir
-/home/mica/Desktop/UTD/Geometry-Clipmaps/build/CMakeFiles/app.dir
+/home/mica/Desktop/UTD/Graphics/Terrain/build/CMakeFiles/rebuild_cache.dir
+/home/mica/Desktop/UTD/Graphics/Terrain/build/CMakeFiles/edit_cache.dir
+/home/mica/Desktop/UTD/Graphics/Terrain/build/CMakeFiles/app.dir

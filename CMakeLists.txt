@@ -26,9 +26,11 @@ find_package(glfw3 REQUIRED FATAL_ERROR)
 # set(IMGUI_SOURCES ${IMGUI_CORE_FILES} ${IMGUI_BACKEND_FILES})
 
 add_executable(${PROJECT_NAME} src/main.cpp src/glad.c
-    src/Helpers.cpp src/Helpers.hpp)
+    src/Helpers.cpp src/Helpers.hpp
+    src/Camera.cpp src/Camera.hpp)
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 target_link_libraries(${PROJECT_NAME} glfw GL dl)
 target_include_directories(${PROJECT_NAME} PUBLIC
-    ${CMAKE_HOME_DIRECTORY}/external/glad/include)
+    ${CMAKE_HOME_DIRECTORY}/external/glad/include
+    ${CMAKE_HOME_DIRECTORY}/external)

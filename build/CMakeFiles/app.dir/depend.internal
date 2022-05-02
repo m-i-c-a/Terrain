@@ -4,17 +4,22 @@
 CMakeFiles/app.dir/src/glad.c.o
  ../external/glad/include/KHR/khrplatform.h
  ../external/glad/include/glad/glad.h
- /home/mica/Desktop/UTD/Geometry-Clipmaps/src/glad.c
+ /home/mica/Desktop/UTD/Graphics/Terrain/src/glad.c
+CMakeFiles/app.dir/src/Camera.cpp.o
+ /home/mica/Desktop/UTD/Graphics/Terrain/src/Camera.cpp
+ /home/mica/Desktop/UTD/Graphics/Terrain/src/Camera.hpp
 CMakeFiles/app.dir/src/Helpers.cpp.o
  ../external/glad/include/KHR/khrplatform.h
  ../external/glad/include/glad/glad.h
- /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Defines.hpp
- /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Helpers.cpp
- /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Helpers.hpp
+ ../external/stb/stb_image.h
+ /home/mica/Desktop/UTD/Graphics/Terrain/src/Defines.hpp
+ /home/mica/Desktop/UTD/Graphics/Terrain/src/Helpers.cpp
+ /home/mica/Desktop/UTD/Graphics/Terrain/src/Helpers.hpp
 CMakeFiles/app.dir/src/main.cpp.o
  ../external/glad/include/KHR/khrplatform.h
  ../external/glad/include/glad/glad.h
- /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Camera.hpp
- /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Defines.hpp
- /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Helpers.hpp
- /home/mica/Desktop/UTD/Geometry-Clipmaps/src/main.cpp
+ ../external/stb/stb_image.h
+ /home/mica/Desktop/UTD/Graphics/Terrain/src/Camera.hpp
+ /home/mica/Desktop/UTD/Graphics/Terrain/src/Defines.hpp
+ /home/mica/Desktop/UTD/Graphics/Terrain/src/Helpers.hpp
+ /home/mica/Desktop/UTD/Graphics/Terrain/src/main.cpp

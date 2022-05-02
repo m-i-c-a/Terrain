@@ -6,7 +6,7 @@
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
-void createProgram(std::string vertexPath, std::string fragmentPath, std::string programName, GLuint& programHandle);
+GLuint createProgram(std::string vertexPath, std::string fragmentPath, std::string programName);
 
 inline void set_uni_vec2(GLuint programHandle, const std::string& uni_name, const glm::vec2& vec2)
 { glUniform2fv(glGetUniformLocation(programHandle, uni_name.c_str()), 1, &(vec2[0])); }
@@ -25,5 +25,8 @@ inline void set_uni_int(GLuint programHandle, const std::string& uni_name, const
 
 inline void set_uni_float(GLuint programHandle, const std::string& uni_name, const GLfloat f)
 { glUniform1f(glGetUniformLocation(programHandle, uni_name.c_str()), f); }
+
+// GLuint create_texture_2d(const std::string tex_filepath);
+// GLuint create_texture_2d16(const std::string tex_filepath);
 
 #endif // HELPERS_HPP

@@ -4,21 +4,23 @@ layout (location = 0) in vec3 a_pos;
 
 uniform mat4 u_projMatrix;
 uniform mat4 u_viewMatrix;
+uniform mat4 u_modelMatrix;
 
-uniform vec4 u_offset;
-uniform vec4 u_scale;
+uniform sampler2D u_heightMap;
+uniform vec2 u_samplerDim;
 
-// layout (location = 1) in vec3 a_norm;
-// // layout (location = 2) in vec2 a_texcoord;
-
-// uniform mat4 u_model_mat;
+out float v_height;
+out vec2  v_uv;
 
 void main()
 {
-	vec4 pos = u_scale*(u_offset+vec4(a_pos,1.0));
+    vec3 worldPos = (u_modelMatrix * vec4(a_pos, 1.0f)).xyz;
+    vec2 uv = vec2( worldPos.x / u_samplerDim.x, worldPos.z / u_samplerDim.y );
+    float height = texelFetch(u_heightMap, ivec2(worldPos.x, worldPos.z), 0).x;
+    worldPos.y += height * 50.0f;
 
-    gl_Position = u_projMatrix * u_viewMatrix * pos;
 
-    // gl_Position = u_proj_mat * u_view_mat * u_model_mat * vec4(a_pos, 1.0f);
-    // gl_Position = vec4(a_pos, 1.0f);
+    gl_Position = u_projMatrix * u_viewMatrix * vec4(worldPos, 1.0f);
+    v_height = height;
+    v_uv = uv;
 }

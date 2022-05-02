@@ -7,11 +7,11 @@ C_FLAGS = -g
 
 C_DEFINES = 
 
-C_INCLUDES = -I/home/mica/Desktop/UTD/Geometry-Clipmaps/external/glad/include 
+C_INCLUDES = -I/home/mica/Desktop/UTD/Graphics/Terrain/external/glad/include -I/home/mica/Desktop/UTD/Graphics/Terrain/external 
 
 CXX_FLAGS = -g   -std=gnu++2a
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/mica/Desktop/UTD/Geometry-Clipmaps/external/glad/include 
+CXX_INCLUDES = -I/home/mica/Desktop/UTD/Graphics/Terrain/external/glad/include -I/home/mica/Desktop/UTD/Graphics/Terrain/external 
 

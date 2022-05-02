@@ -1,6 +1,9 @@
 #include <sstream>
 #include <fstream>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
 #include "Helpers.hpp"
 #include "Defines.hpp"
 
@@ -59,12 +62,12 @@ static void check_link_status(const GLuint shader_program, const std::string& pr
    }
 }
 
-void createProgram(std::string vertexPath, std::string fragmentPath, std::string programName, GLuint& programHandle)
+GLuint createProgram(std::string vertexPath, std::string fragmentPath, std::string programName)
 {
    const GLuint vertex_shader_handle   = compile_shader(vertexPath, GL_VERTEX_SHADER);
    const GLuint fragment_shader_handle = compile_shader(fragmentPath, GL_FRAGMENT_SHADER);
 
-   programHandle = glCreateProgram();
+   GLuint programHandle = glCreateProgram();
    glAttachShader(programHandle, vertex_shader_handle);
    glAttachShader(programHandle, fragment_shader_handle);
    glLinkProgram(programHandle);
@@ -72,4 +75,92 @@ void createProgram(std::string vertexPath, std::string fragmentPath, std::string
 
    glDeleteShader(vertex_shader_handle);
    glDeleteShader(fragment_shader_handle);
+
+   return programHandle;
 }
+
+// GLuint create_texture_2d16(const std::string tex_filepath)
+// {
+//    GLuint tex_handle;
+//    glGenTextures(1, &tex_handle);
+//    glBindTexture(GL_TEXTURE_2D, tex_handle);
+
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+//    stbi_set_flip_vertically_on_load(true); 
+//    int tex_width, tex_height, tex_num_chan;
+//    unsigned char* tex_data = (unsigned char*)stbi_load_16(tex_filepath.c_str(), &tex_width, &tex_height, &tex_num_chan, 1);
+
+//    if (!tex_data)
+//       EXIT("Failed to load texture " + tex_filepath);
+
+//    uint64_t format = 0x0;
+//    switch (tex_num_chan)
+//    {
+//       case 1:
+//          format = GL_RED;
+//          break;
+//       case 2:
+//          format = GL_RG;
+//          break;
+//       default:
+//          EXIT("Failed to load texture " + tex_filepath + " Format not supported!");
+//    };
+
+//    glTexImage2D(GL_TEXTURE_2D, 0, format, tex_width, tex_height, 0, format, GL_UNSIGNED_SHORT, tex_data);
+//    glGenerateMipmap(GL_TEXTURE_2D);
+
+//    stbi_image_free(tex_data);
+
+//    return tex_handle;
+
+// }
+
+// GLuint create_texture_2d(const std::string tex_filepath)
+// {
+//    GLuint tex_handle;
+//    glGenTextures(1, &tex_handle);
+//    glBindTexture(GL_TEXTURE_2D, tex_handle);
+
+//    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+//    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+//    stbi_set_flip_vertically_on_load(true); 
+//    int tex_width, tex_height, tex_num_chan;
+//    unsigned char* tex_data = stbi_load(tex_filepath.c_str(), &tex_width, &tex_height, &tex_num_chan, 4);
+
+//    if (!tex_data)
+//       EXIT("Failed to load texture " + tex_filepath);
+
+//    uint64_t format = 0x0;
+//    switch (tex_num_chan)
+//    {
+//       case 1:
+//          format = GL_RGBA;
+//          break;
+//       case 3:
+//          format = GL_RGB;
+//          break;
+//       case 4:
+//          format = GL_RGBA;
+//          break;
+//       default:
+//          EXIT("Failed to load texture " + tex_filepath);
+//    }
+
+//    glTexImage2D(GL_TEXTURE_2D, 0, format, tex_width, tex_height, 0, format, GL_UNSIGNED_BYTE, tex_data);
+//    glGenerateMipmap(GL_TEXTURE_2D);
+
+//    stbi_image_free(tex_data);
+
+//    return tex_handle;
+// }
