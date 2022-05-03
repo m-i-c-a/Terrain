@@ -18,6 +18,34 @@ stdint.h
 KHR/khrplatform.h
 -
 
+../external/imgui/backends/imgui_impl_glfw.h
+imgui.h
+../external/imgui/backends/imgui.h
+
+../external/imgui/backends/imgui_impl_opengl3.h
+imgui.h
+../external/imgui/backends/imgui.h
+TargetConditionals.h
+-
+
+../external/imgui/imconfig.h
+
+../external/imgui/imgui.h
+imconfig.h
+../external/imgui/imconfig.h
+float.h
+-
+stdarg.h
+-
+stddef.h
+-
+string.h
+-
+assert.h
+-
+imgui_user.h
+../external/imgui/imgui_user.h
+
 ../external/stb/stb_image.h
 stb_image.h
 ../external/stb/stb_image.h
@@ -50,11 +78,11 @@ intrin.h
 arm_neon.h
 -
 
-/home/mica/Desktop/UTD/Graphics/Terrain/src/Camera.hpp
+/home/mica/Desktop/UTD/Geometry-Clipmaps/src/Camera.hpp
 glm/glm.hpp
 -
 
-/home/mica/Desktop/UTD/Graphics/Terrain/src/Defines.hpp
+/home/mica/Desktop/UTD/Geometry-Clipmaps/src/Defines.hpp
 iostream
 -
 stdlib.h
@@ -62,7 +90,7 @@ stdlib.h
 string
 -
 
-/home/mica/Desktop/UTD/Graphics/Terrain/src/Helpers.hpp
+/home/mica/Desktop/UTD/Geometry-Clipmaps/src/Helpers.hpp
 string
 -
 glad/glad.h
@@ -70,7 +98,7 @@ glad/glad.h
 glm/gtc/type_ptr.hpp
 -
 
-/home/mica/Desktop/UTD/Graphics/Terrain/src/main.cpp
+/home/mica/Desktop/UTD/Geometry-Clipmaps/src/main.cpp
 stdio.h
 -
 vector
@@ -83,10 +111,16 @@ GLFW/glfw3.h
 -
 glm/glm.hpp
 -
+imgui/imgui.h
+-
+imgui/backends/imgui_impl_glfw.h
+-
+imgui/backends/imgui_impl_opengl3.h
+-
 Defines.hpp
-/home/mica/Desktop/UTD/Graphics/Terrain/src/Defines.hpp
+/home/mica/Desktop/UTD/Geometry-Clipmaps/src/Defines.hpp
 Helpers.hpp
-/home/mica/Desktop/UTD/Graphics/Terrain/src/Helpers.hpp
+/home/mica/Desktop/UTD/Geometry-Clipmaps/src/Helpers.hpp
 Camera.hpp
-/home/mica/Desktop/UTD/Graphics/Terrain/src/Camera.hpp
+/home/mica/Desktop/UTD/Geometry-Clipmaps/src/Camera.hpp
 

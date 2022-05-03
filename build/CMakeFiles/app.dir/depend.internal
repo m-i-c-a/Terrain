@@ -4,22 +4,68 @@
 CMakeFiles/app.dir/src/glad.c.o
  ../external/glad/include/KHR/khrplatform.h
  ../external/glad/include/glad/glad.h
- /home/mica/Desktop/UTD/Graphics/Terrain/src/glad.c
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/src/glad.c
+CMakeFiles/app.dir/external/imgui/backends/imgui_impl_glfw.cpp.o
+ ../external/imgui/imconfig.h
+ ../external/imgui/imgui.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/backends/imgui_impl_glfw.cpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/backends/imgui_impl_glfw.h
+CMakeFiles/app.dir/external/imgui/backends/imgui_impl_opengl3.cpp.o
+ ../external/imgui/imconfig.h
+ ../external/imgui/imgui.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/backends/imgui_impl_opengl3.cpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/backends/imgui_impl_opengl3.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/backends/imgui_impl_opengl3_loader.h
+CMakeFiles/app.dir/external/imgui/imgui.cpp.o
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imconfig.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui.cpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui_internal.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imstb_textedit.h
+CMakeFiles/app.dir/external/imgui/imgui_demo.cpp.o
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imconfig.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui_demo.cpp
+CMakeFiles/app.dir/external/imgui/imgui_draw.cpp.o
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imconfig.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui_draw.cpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui_internal.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imstb_rectpack.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imstb_textedit.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imstb_truetype.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/misc/freetype/imgui_freetype.h
+CMakeFiles/app.dir/external/imgui/imgui_tables.cpp.o
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imconfig.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui_internal.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui_tables.cpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imstb_textedit.h
+CMakeFiles/app.dir/external/imgui/imgui_widgets.cpp.o
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imconfig.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui_internal.h
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imgui_widgets.cpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/imstb_textedit.h
 CMakeFiles/app.dir/src/Camera.cpp.o
- /home/mica/Desktop/UTD/Graphics/Terrain/src/Camera.cpp
- /home/mica/Desktop/UTD/Graphics/Terrain/src/Camera.hpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Camera.cpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Camera.hpp
 CMakeFiles/app.dir/src/Helpers.cpp.o
  ../external/glad/include/KHR/khrplatform.h
  ../external/glad/include/glad/glad.h
  ../external/stb/stb_image.h
- /home/mica/Desktop/UTD/Graphics/Terrain/src/Defines.hpp
- /home/mica/Desktop/UTD/Graphics/Terrain/src/Helpers.cpp
- /home/mica/Desktop/UTD/Graphics/Terrain/src/Helpers.hpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Defines.hpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Helpers.cpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Helpers.hpp
 CMakeFiles/app.dir/src/main.cpp.o
  ../external/glad/include/KHR/khrplatform.h
  ../external/glad/include/glad/glad.h
+ ../external/imgui/backends/imgui_impl_glfw.h
+ ../external/imgui/backends/imgui_impl_opengl3.h
+ ../external/imgui/imconfig.h
+ ../external/imgui/imgui.h
  ../external/stb/stb_image.h
- /home/mica/Desktop/UTD/Graphics/Terrain/src/Camera.hpp
- /home/mica/Desktop/UTD/Graphics/Terrain/src/Defines.hpp
- /home/mica/Desktop/UTD/Graphics/Terrain/src/Helpers.hpp
- /home/mica/Desktop/UTD/Graphics/Terrain/src/main.cpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Camera.hpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Defines.hpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/src/Helpers.hpp
+ /home/mica/Desktop/UTD/Geometry-Clipmaps/src/main.cpp
