@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <vector>
+#include <array>
 
 // #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -20,8 +21,7 @@ constexpr uint32_t VIEWER_WIDTH  = 700u;
 constexpr uint32_t VIEWER_HEIGHT = 700u;
 constexpr uint32_t PATCH_RESOLUTION = 64u;
 constexpr uint32_t TERRAIN_WIDTH = 1024; // we will render terrain in 1024x1024 grid
-constexpr uint32_t TILE_DIM = 2u;       // can only be multiple of 2
-constexpr uint32_t CLIPMAP_LEVELS = 10u;
+constexpr uint32_t CLIPMAP_LEVELS = 1u;
 
 enum
 {
@@ -39,8 +39,10 @@ enum
 enum 
 {
     VERTEXARRAY_TEST_TILE     = 0,
-    VERTEXARRAY_PATCH         = 1,
-    VERTEXARRAY_TILE          = 2,
+    VERTEXARRAY_TILE          = 1,
+    VERTEXARRAY_FILLER        = 2,
+    VERTEXARRAY_CROSS         = 3,
+    VERTEXARRAY_TRIM          = 4,
     VERTEXARRAY_COUNT
 };
 
@@ -48,9 +50,14 @@ enum
 {
     BUFFER_TEST_TILE_VERTEX = 0,
     BUFFER_TEST_TILE_INDEX  = 1,
-    BUFFER_VERTEX_PATCH         = 2,
-    BUFFER_VERTEX_TILE          = 3,
-    BUFFER_INDEX_TILE           = 4,
+    BUFFER_VERTEX_TILE      = 2,
+    BUFFER_INDEX_TILE       = 3,
+    BUFFER_FILLER_VERTEX    = 4,
+    BUFFER_FILLER_INDEX     = 5,
+    BUFFER_CROSS_VERTEX     = 6,
+    BUFFER_CROSS_INDEX      = 7,
+    BUFFER_TRIM_VERTEX      = 8,
+    BUFFER_TRIM_INDEX       = 9,
     BUFFER_COUNT
 };
 
@@ -62,7 +69,10 @@ struct OpenGLManager {
 } g_gl;
 
 struct AppManager {
-    size_t tileIndexCount = 0;
+    size_t tileIndexCount   = 0u;
+    size_t fillerIndexCount = 0u;
+    size_t crossIndexCount  = 0u;
+
     size_t testTileIndexCount = 0;
     glm::vec2 heightMapDim { 0.0f, 0.0f };
 
@@ -80,7 +90,7 @@ struct CameraManager {
     float yaw;   // radians
 
 
-    glm::vec3 pos { 0.0, 0.0, 0.0 };
+    glm::vec3 pos { 0.0, 0.0, -50.0 };
     glm::vec3 forward { 0.0f, 0.0f, -1.0f };
     glm::mat4 view;
 
@@ -245,6 +255,10 @@ GLuint create_texture_2d(const std::string tex_filepath)
 }
 
 
+constexpr uint32_t NUM_CLIPMAP_LEVELS = 2u;
+constexpr uint32_t TILE_RESOLUTION = 2u;
+
+
 void init()
 {
     g_gl.programs[PROGRAM_DEFAULT] = createProgram("../shaders/default.vert", "../shaders/default.frag", "default");
@@ -255,67 +269,68 @@ void init()
 
     g_gl.textures[TEXTURE_HEIGHTMAP] =  create_texture_2d("../assets/test3.png");
 
+    struct Vertex {
+        float pos[3];
+
+        Vertex()
+            : pos { 0.0f, 0.0f, 0.0f }
+        {}
+
+        Vertex(float x, float y, float z)
+            : pos {x, y, z}
+        {}
+    };
+
+    // Tile mesh
     {
         // (0,0) is the bottom left of the plane
 
-        struct Vertex {
-            float pos[3];
-
-            Vertex(float x, float y, float z)
-                : pos {x, y, z}
-            {}
-        };
-
         std::vector<Vertex> vertices;
 
-        // const float step = 1.0f / TILE_DIM;
-
-        for (size_t y = 0; y < (TILE_DIM + 1u); ++y)
+        for (size_t y = 0; y < (TILE_RESOLUTION + 1u); ++y)
         {
-            // const float y_val = y * step;
-            for (size_t x = 0; x < (TILE_DIM + 1u); ++x)
+            for (size_t x = 0; x < (TILE_RESOLUTION + 1u); ++x)
             {
-                // const float x_val = x * step;
                 vertices.emplace_back(x, 0.0f, y);
             }
         }
 
-        // constexpr size_t numIndiciesPerRow = 2u * (TILE_DIM + 1u);
-        // constexpr size_t numIndices = 2u * (TILE_DIM * TILE_DIM + 2 * TILE_DIM - 1);
+        // constexpr size_t numIndiciesPerRow = 2u * (TILE_RESOLUTION + 1u);
+        // constexpr size_t numIndices = 2u * (TILE_RESOLUTION * TILE_RESOLUTION + 2 * TILE_RESOLUTION - 1);
         // std::vector<uint32_t> indices(numIndices);
 
-        // for (uint32_t y = 0u; y < TILE_DIM; ++y)
+        // for (uint32_t y = 0u; y < TILE_RESOLUTION; ++y)
         // {
         //     const size_t rowStartIndex = y * numIndiciesPerRow + y * 2u;
         //     const size_t rowEndIndex   = rowStartIndex + numIndiciesPerRow; 
 
         //     for (uint32_t i = rowStartIndex, j = 0u; i < rowEndIndex; i+=2u, ++j)
         //     {
-        //         indices[i] = (TILE_DIM + 1u) * y + j;
+        //         indices[i] = (TILE_RESOLUTION + 1u) * y + j;
         //     }
 
         //     for (uint32_t i = rowStartIndex + 1u; i < rowEndIndex; i+=2u)
         //     {
-        //         indices[i] = indices[i-1u] + TILE_DIM + 1u;
+        //         indices[i] = indices[i-1u] + TILE_RESOLUTION + 1u;
         //     }
 
         //     // Degenerate Triangles
-        //     if (y != TILE_DIM - 1u)
+        //     if (y != TILE_RESOLUTION - 1u)
         //     {
         //         indices[rowEndIndex] = indices[rowEndIndex-1];
         //         indices[rowEndIndex+1] = indices[rowStartIndex+1];
         //     }
         // }    
 
-        constexpr size_t numIndices = 6u * TILE_DIM * TILE_DIM;
+        constexpr size_t numIndices = 6u * TILE_RESOLUTION * TILE_RESOLUTION;
         std::vector<uint32_t> indices(numIndices);
 
         size_t idx = 0;
-        for (uint32_t y = 0u; y < TILE_DIM; ++y)
+        for (uint32_t y = 0u; y < TILE_RESOLUTION; ++y)
         {
-            const uint32_t start = y * TILE_DIM + y;
-            const uint32_t end   = start + TILE_DIM + 1u;
-            for (uint32_t x = 0u; x < TILE_DIM; ++x)
+            const uint32_t start = y * TILE_RESOLUTION + y;
+            const uint32_t end   = start + TILE_RESOLUTION + 1u;
+            for (uint32_t x = 0u; x < TILE_RESOLUTION; ++x)
             {
                 indices[idx++] = start + x;
                 indices[idx++] = end + x;
@@ -351,21 +366,206 @@ void init()
         g_app.tileIndexCount = numIndices;
     }
 
+    // Filler mesh
+    {
+        constexpr size_t mesh_vertex_count = 2u * (TILE_RESOLUTION + 1u);
+        constexpr size_t vertex_count = 4u * mesh_vertex_count;
+        std::array<Vertex, vertex_count> vertices;
+
+        size_t v_idx = 0u;
+        for (int y = 0; y < 2u; ++y)
+        {
+            for (int x = 0; x <= TILE_RESOLUTION; ++x)
+            {
+                vertices[v_idx++] = Vertex(static_cast<float>(TILE_RESOLUTION + x + 1), 0.0f, static_cast<float>(y));
+            }
+        }
+
+        assert(v_idx == mesh_vertex_count);
+
+        for (int y = 0; y < 2u; ++y)
+        {
+            for (int x = TILE_RESOLUTION; x >= 0; --x)
+            {
+                vertices[v_idx++] = Vertex(-1.0f * static_cast<float>(TILE_RESOLUTION + x), 0.0f, static_cast<float>(y));
+            }
+        }
+
+        assert(v_idx == 2u * mesh_vertex_count);
+
+        for (int x = 0; x < 2u; ++x)
+        {
+            for (int y = 0; y <= TILE_RESOLUTION; ++y)
+            {
+                vertices[v_idx++] = Vertex(static_cast<float>(x), 0.0f, static_cast<float>(TILE_RESOLUTION + y + 1));
+            }
+        }
+
+        assert(v_idx == 3u * mesh_vertex_count);
+
+        for (int x = 0; x < 2u; ++x)
+        {
+            for (int y = TILE_RESOLUTION; y >= 0; --y)
+            {
+                vertices[v_idx++] = Vertex(static_cast<float>(x), 0.0f, -1.0f * static_cast<float>(TILE_RESOLUTION + y));
+            }
+        }
+
+        assert(v_idx == 4u * mesh_vertex_count);
+
+        constexpr size_t mesh_index_count = 6u * TILE_RESOLUTION;
+        constexpr size_t index_count = 4u * mesh_index_count;
+        std::array<uint32_t, index_count> indices;
+
+        size_t idx = 0u;
+        for (uint32_t patch = 0u; patch < 4u; ++patch)
+        {
+            for (uint32_t i = 0; i < TILE_RESOLUTION; ++i)
+            {
+                indices[idx++] = patch * mesh_vertex_count + i;
+                indices[idx++] = patch * mesh_vertex_count + i + TILE_RESOLUTION + 1u;
+                indices[idx++] = patch * mesh_vertex_count + i + TILE_RESOLUTION + 2u;
+
+                indices[idx++] = patch * mesh_vertex_count + i;
+                indices[idx++] = patch * mesh_vertex_count + i + TILE_RESOLUTION + 2u;
+                indices[idx++] = patch * mesh_vertex_count + i + 1u;
+            }
+        }
+
+        glGenVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_FILLER]);
+        glGenBuffers(1, &g_gl.buffers[BUFFER_FILLER_VERTEX]);
+        glGenBuffers(1, &g_gl.buffers[BUFFER_FILLER_INDEX]);
+
+        glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_FILLER]);
+    
+        glBindBuffer(GL_ARRAY_BUFFER, g_gl.buffers[BUFFER_FILLER_VERTEX]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl.buffers[BUFFER_FILLER_INDEX]);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.size(), indices.data(), GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(0u);
+        glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), offsetof(Vertex, pos));
+
+        glBindVertexArray(0u);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
+        glBindBuffer(GL_ARRAY_BUFFER, 0u);
+
+        g_app.fillerIndexCount = index_count;
+    }
+
+    // Cross mesh
+    {
+        constexpr size_t mesh_vertex_count = 2u * (TILE_RESOLUTION + 1u);
+        constexpr size_t vertex_count = 4u * mesh_vertex_count;
+        std::array<Vertex, vertex_count> vertices;
+
+        size_t v_idx = 0u;
+        for (int y = 0; y < 2u; ++y)
+        {
+            for (int x = 0; x <= TILE_RESOLUTION; ++x)
+            {
+                vertices[v_idx++] = Vertex(static_cast<float>(x + 1), 0.0f, static_cast<float>(y));
+            }
+        }
+
+        assert(v_idx == mesh_vertex_count);
+
+        for (int y = 0; y < 2u; ++y)
+        {
+            for (int x = TILE_RESOLUTION; x >= 0; --x)
+            {
+                vertices[v_idx++] = Vertex(-1.0f * static_cast<float>(x), 0.0f, static_cast<float>(y));
+            }
+        }
+
+        assert(v_idx == 2u * mesh_vertex_count);
+
+        for (int x = 0; x < 2u; ++x)
+        {
+            for (int y = 0; y <= TILE_RESOLUTION; ++y)
+            {
+                vertices[v_idx++] = Vertex(static_cast<float>(x), 0.0f, static_cast<float>(y + 1));
+            }
+        }
+
+        assert(v_idx == 3u * mesh_vertex_count);
+
+        for (int x = 0; x < 2u; ++x)
+        {
+            for (int y = TILE_RESOLUTION; y >= 0; --y)
+            {
+                vertices[v_idx++] = Vertex(static_cast<float>(x), 0.0f, -1.0f * static_cast<float>(y));
+            }
+        }
+
+        assert(v_idx == 4u * mesh_vertex_count);
+
+        constexpr size_t mesh_index_count = 6u * TILE_RESOLUTION;
+        constexpr size_t index_count = 4u * mesh_index_count;
+        std::array<uint32_t, index_count> indices;
+
+        size_t idx = 0u;
+        for (uint32_t patch = 0u; patch < 4u; ++patch)
+        {
+            for (uint32_t i = 0; i < TILE_RESOLUTION; ++i)
+            {
+                indices[idx++] = patch * mesh_vertex_count + i;
+                indices[idx++] = patch * mesh_vertex_count + i + TILE_RESOLUTION + 1u;
+                indices[idx++] = patch * mesh_vertex_count + i + TILE_RESOLUTION + 2u;
+
+                indices[idx++] = patch * mesh_vertex_count + i;
+                indices[idx++] = patch * mesh_vertex_count + i + TILE_RESOLUTION + 2u;
+                indices[idx++] = patch * mesh_vertex_count + i + 1u;
+            }
+        }
+
+        glGenVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_CROSS]);
+        glGenBuffers(1, &g_gl.buffers[BUFFER_CROSS_VERTEX]);
+        glGenBuffers(1, &g_gl.buffers[BUFFER_CROSS_INDEX]);
+
+        glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_CROSS]);
+    
+        glBindBuffer(GL_ARRAY_BUFFER, g_gl.buffers[BUFFER_CROSS_VERTEX]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl.buffers[BUFFER_CROSS_INDEX]);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.size(), indices.data(), GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(0u);
+        glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), offsetof(Vertex, pos));
+
+        glBindVertexArray(0u);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
+        glBindBuffer(GL_ARRAY_BUFFER, 0u);
+
+        g_app.crossIndexCount = index_count;
+    }
+
+    // Trim Mesh
+    {
+        constexpr size_t vertex_count = 8u * TILE_RESOLUTION + 3u;
+        std::array<Vertex, vertex_count> vertices;
+
+        // Default trim shape is in the form of a "L"
+
+        // Hoizontal (bottom)
+        size_t v_idx = 0u;
+        for (int y = 0; y < 2u; ++y)
+        {
+            for (int x = 0; x <= TILE_RESOLUTION; ++x)
+            {
+                vertices[v_idx++] = Vertex(-1.0f * static_cast<float>(TILE_RESOLUTION * 2 + 1) + x, 0.0f, static_cast<float>(y));
+            }
+        }
+    }
+
     // Test 1024x1024 tile
     {
-        struct Vertex {
-            float pos[3];
-
-            Vertex(float x, float y, float z)
-                : pos {x, y, z}
-            {}
-        };
-
-
         const uint32_t testTileDim = 255;
         std::vector<Vertex> vertices;
 
-        // const float step = 1.0f / TILE_DIM;
+        // const float step = 1.0f / TILE_RESOLUTION;
 
         for (size_t y = 0; y < (testTileDim + 1u); ++y)
         {
@@ -452,12 +652,14 @@ void render()
     set_uni_mat4(g_gl.programs[PROGRAM_DEFAULT], "u_projMatrix"    , g_camera.camera.getProjection());
     set_uni_mat4(g_gl.programs[PROGRAM_DEFAULT], "u_viewMatrix"    , g_camera.view);
     set_uni_vec2(g_gl.programs[PROGRAM_DEFAULT], "u_samplerDim"    , g_app.heightMapDim);
-    set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_tileResolution", TILE_DIM);
+    set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_tileResolution", TILE_RESOLUTION);
     set_uni_int(g_gl.programs[PROGRAM_DEFAULT], "u_morphEnable", g_app.morphEnabled);
     set_uni_int(g_gl.programs[PROGRAM_DEFAULT], "u_showMorphDebug", g_app.showMorphDebug);
     set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_heightScale", g_app.heightScale);
-    // set_uni_vec3(g_gl.programs[PROGRAM_DEFAULT], "u_color", {1.0f, 0.0f, 0.0f}};
 
+    glm::mat4 rotMatrix { 1.0f };
+    glm::rotate(rotMatrix, glm::half_pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+    set_uni_mat4(g_gl.programs[PROGRAM_DEFAULT], "u_rotMatrix", rotMatrix);
 
     if (g_app.showWireframe)
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -465,7 +667,7 @@ void render()
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     const GLenum drawMode = GL_TRIANGLE_STRIP;
-    static constexpr float tileDim = static_cast<float>(TILE_DIM);
+    static constexpr float tileDim = static_cast<float>(TILE_RESOLUTION);
 
     enum BlendDir
     {
@@ -544,6 +746,113 @@ void render()
     glUseProgram(0u);
 }
 
+
+
+
+void testRender()
+{
+    glClearColor(0.12f, 0.68f, 0.87f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    if (g_app.showWireframe)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    else
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glUseProgram(g_gl.programs[PROGRAM_DEFAULT]);
+    glBindTexture(GL_TEXTURE_2D, g_gl.textures[TEXTURE_HEIGHTMAP]);
+
+    set_uni_mat4(g_gl.programs[PROGRAM_DEFAULT], "u_projMatrix"    , g_camera.camera.getProjection());
+    set_uni_mat4(g_gl.programs[PROGRAM_DEFAULT], "u_viewMatrix"    , g_camera.view);
+    set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_tileResolution", static_cast<float>(TILE_RESOLUTION));
+    set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_heightScale", g_app.heightScale);
+
+    const glm::vec2 view_pos { g_camera.pos.x, g_camera.pos.y };
+
+    // draw cross
+    set_uni_vec2 (g_gl.programs[PROGRAM_DEFAULT], "u_translation", glm::floor(view_pos) );
+    set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_scale"      , 1.0f                 );
+    glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_CROSS]);
+    glDrawElements(GL_TRIANGLES, g_app.crossIndexCount, GL_UNSIGNED_INT, nullptr);
+
+    for (uint32_t level = 0u; level < NUM_CLIPMAP_LEVELS; ++level)
+    {
+        const float scale = (1u << level);
+        const glm::vec2 snapped_pos = glm::floor(view_pos / scale) * scale;
+        const glm::vec2 tile_size { TILE_RESOLUTION << level, TILE_RESOLUTION << level };
+        const glm::vec2 base = snapped_pos - glm::vec2(TILE_RESOLUTION << (level + 1), TILE_RESOLUTION << (level + 1));
+
+        for( int x = 0; x < 4; x++ )
+        {
+            for( int y = 0; y < 4; y++ )
+            {
+                // draw a 4x4 set of tiles. cut out the middle 2x2 unless we're at the finest level
+                if( level != 0 && ( x == 1 || x == 2 ) && ( y == 1 || y == 2 ) ) {
+                    continue;
+                }
+
+                const glm::vec2 fill = glm::vec2(x >= 2 ? 1 : 0, y >= 2 ? 1 : 0) * scale;
+                const glm::vec2 translation = base + glm::vec2(x, y) * tile_size + fill;
+
+                set_uni_vec2 (g_gl.programs[PROGRAM_DEFAULT], "u_translation", translation);
+                set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_scale"      , scale      );
+                set_uni_vec3 (g_gl.programs[PROGRAM_DEFAULT], "u_debugColor" , { 0.0f, 0.0f, 0.0f });
+
+                glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_TILE]);
+                glDrawElements(GL_TRIANGLES, g_app.tileIndexCount, GL_UNSIGNED_INT, nullptr);
+
+                // LOG("level: %u  base: %.2f %.2f  fill: %d %d  tl: %.2f %.2f  size: %d %d\n", level, base.x, base.y, (int)fill.x, (int)fill.y, tile_tl.x, tile_tl.y, (int)tile_size.x, (int)tile_size.y);
+            }
+        }
+
+
+        // draw filler
+        {
+            set_uni_vec2 (g_gl.programs[PROGRAM_DEFAULT], "u_translation", snapped_pos);
+            set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_scale"      , scale      );
+
+            glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_FILLER]);
+            glDrawElements(GL_TRIANGLES, g_app.fillerIndexCount, GL_UNSIGNED_INT, nullptr);
+        }
+    }
+
+#if 0
+for ( u32 l = 0; l < NUM_CLIPMAP_LEVELS; l++ ) {
+			float scale = checked_cast< float >( u32( 1 ) << l );
+			v2 snapped_pos = floorf( game->frozen_pos.xy() / scale ) * scale;
+
+			// draw tiles
+			v2 tile_size = v2( checked_cast< float >( TILE_RESOLUTION << l ) );
+			v2 base = snapped_pos - v2( checked_cast< float >( TILE_RESOLUTION << ( l + 1 ) ) );
+
+			for( int x = 0; x < 4; x++ ) {
+				for( int y = 0; y < 4; y++ ) {
+					// draw a 4x4 set of tiles. cut out the middle 2x2 unless we're at the finest level
+					if( l != 0 && ( x == 1 || x == 2 ) && ( y == 1 || y == 2 ) ) {
+						continue;
+					}
+
+					v2 fill = v2( x >= 2 ? 1 : 0, y >= 2 ? 1 : 0 ) * scale;
+					v2 tile_tl = base + v2( x, y ) * tile_size + fill;
+
+					// draw a low poly tile if the tile is entirely outside the world
+					v2 tile_br = tile_tl + tile_size;
+					bool inside = true;
+					if( !intervals_overlap( tile_tl.x, tile_br.x, 0, clipmap.heightmap.w ) )
+						inside = false;
+					if( !intervals_overlap( tile_tl.y, tile_br.y, 0, clipmap.heightmap.h ) )
+						inside = false;
+
+					Mesh mesh = inside ? clipmap.gpu.tile : clipmap.gpu.empty_tile;
+					render_state.set_uniform( "model", rotation_uniforms[ 0 ] );
+					render_state.set_uniform( "clipmap", renderer_uniforms( tile_tl, scale ) );
+					renderer_draw_mesh( mesh, render_state );
+				}
+			}
+#endif
+}
+
+
 void gui()
 {
     ImGui_ImplOpenGL3_NewFrame();
@@ -619,11 +928,14 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
 
+
+
     while (!glfwWindowShouldClose(window)) {
 
         glfwPollEvents();
 
-        render();
+        // render();
+        testRender();
 
         gui();
 
