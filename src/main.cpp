@@ -20,12 +20,13 @@ constexpr uint32_t VIEWER_WIDTH  = 700u;
 constexpr uint32_t VIEWER_HEIGHT = 700u;
 constexpr uint32_t PATCH_RESOLUTION = 64u;
 constexpr uint32_t TERRAIN_WIDTH = 1024; // we will render terrain in 1024x1024 grid
-constexpr uint32_t TILE_DIM = 16u;
+constexpr uint32_t TILE_DIM = 2u;       // can only be multiple of 2
 constexpr uint32_t CLIPMAP_LEVELS = 10u;
 
 enum
 {
     PROGRAM_DEFAULT = 0,
+    PROGRAM_TEST    = 1,
     PROGRAM_COUNT
 };
 
@@ -37,7 +38,7 @@ enum
 
 enum 
 {
-    VERTEXARRAY_TEST_TRIANGLE = 0,
+    VERTEXARRAY_TEST_TILE     = 0,
     VERTEXARRAY_PATCH         = 1,
     VERTEXARRAY_TILE          = 2,
     VERTEXARRAY_COUNT
@@ -45,10 +46,11 @@ enum
 
 enum 
 {
-    BUFFER_TEST_TRIANGLE = 0,
-    BUFFER_VERTEX_PATCH  = 1,
-    BUFFER_VERTEX_TILE   = 2,
-    BUFFER_INDEX_TILE    = 3,
+    BUFFER_TEST_TILE_VERTEX = 0,
+    BUFFER_TEST_TILE_INDEX  = 1,
+    BUFFER_VERTEX_PATCH         = 2,
+    BUFFER_VERTEX_TILE          = 3,
+    BUFFER_INDEX_TILE           = 4,
     BUFFER_COUNT
 };
 
@@ -61,7 +63,14 @@ struct OpenGLManager {
 
 struct AppManager {
     size_t tileIndexCount = 0;
+    size_t testTileIndexCount = 0;
     glm::vec2 heightMapDim { 0.0f, 0.0f };
+
+    bool showTest = false;
+    bool showWireframe = false;
+    bool morphEnabled = true;
+    bool showMorphDebug = false;
+    float heightScale = 1.0f;
 } g_app;
 
 struct CameraManager {
@@ -71,7 +80,7 @@ struct CameraManager {
     float yaw;   // radians
 
 
-    glm::vec3 pos { 0.0, 0.0, -10.0 };
+    glm::vec3 pos { 0.0, 0.0, 0.0 };
     glm::vec3 forward { 0.0f, 0.0f, -1.0f };
     glm::mat4 view;
 
@@ -96,6 +105,10 @@ void cursorPosCallback(GLFWwindow* window, double x, double y)
     static float x0 = x, y0 = y;
     const float dx = x - x0;
     const float dy = y0 - y;
+
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse)
+        return;
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
     {
@@ -129,17 +142,15 @@ void cursorPosCallback(GLFWwindow* window, double x, double y)
 
 void mouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    // ImGuiIO& io = ImGui::GetIO();
-    // ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
-    // if (io.WantCaptureMouse)
-    //     return;
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse)
+        return;
 
-    const float scalar = 15.0f;
+    const float scalar = 10.0f;
     g_camera.pos -= g_camera.forward * static_cast<float>(yoffset) * scalar;// * static_cast<float>(5e-2);
 
     updateCameraMatrix();
 }
-
 
 void loadDisplacementMap(std::string pathToFile)
 {
@@ -237,36 +248,12 @@ GLuint create_texture_2d(const std::string tex_filepath)
 void init()
 {
     g_gl.programs[PROGRAM_DEFAULT] = createProgram("../shaders/default.vert", "../shaders/default.frag", "default");
+    g_gl.programs[PROGRAM_TEST   ] = createProgram("../shaders/test.vert"   , "../shaders/default.frag", "default");
 
     g_camera.camera.setPerspectiveProjection(glm::radians(50.f), VIEWER_WIDTH /  VIEWER_HEIGHT, 0.1f, 20000.f);
     updateCameraMatrix();
 
     g_gl.textures[TEXTURE_HEIGHTMAP] =  create_texture_2d("../assets/test3.png");
-    // g_gl.textures[TEXTURE_HEIGHTMAP] =  create_texture_2d("../assets/wall.jpg");
-    // loadDisplacementMap("../assets/test1.png");
-
-    // Test Triangle
-    {
-        float vertices[] = {
-            -0.5f, -0.5f, 0.0f,
-            0.5f, -0.5f, 0.0f,
-            0.0f,  0.5f, 0.0f
-        }; 
-
-        glGenVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_TEST_TRIANGLE]);
-        glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_TEST_TRIANGLE]);
-
-        glGenBuffers(1, &g_gl.buffers[BUFFER_TEST_TRIANGLE]);
-        glBindBuffer(GL_ARRAY_BUFFER, g_gl.buffers[BUFFER_TEST_TRIANGLE]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), (void*)vertices, GL_STATIC_DRAW);
-
-        glEnableVertexAttribArray(0u);
-        glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3,
-                    (void*)(0));
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0u);
-        glBindVertexArray(0u);
-    }
 
     {
         // (0,0) is the bottom left of the plane
@@ -363,6 +350,76 @@ void init()
 
         g_app.tileIndexCount = numIndices;
     }
+
+    // Test 1024x1024 tile
+    {
+        struct Vertex {
+            float pos[3];
+
+            Vertex(float x, float y, float z)
+                : pos {x, y, z}
+            {}
+        };
+
+
+        const uint32_t testTileDim = 255;
+        std::vector<Vertex> vertices;
+
+        // const float step = 1.0f / TILE_DIM;
+
+        for (size_t y = 0; y < (testTileDim + 1u); ++y)
+        {
+            // const float y_val = y * step;
+            for (size_t x = 0; x < (testTileDim + 1u); ++x)
+            {
+                // const float x_val = x * step;
+                vertices.emplace_back(x, 0.0f, y);
+            }
+        }
+
+        constexpr size_t numIndices = 6u * testTileDim * testTileDim;
+        std::vector<uint32_t> indices(numIndices);
+
+        size_t idx = 0;
+        for (uint32_t y = 0u; y < testTileDim; ++y)
+        {
+            const uint32_t start = y * testTileDim + y;
+            const uint32_t end   = start + testTileDim + 1u;
+            for (uint32_t x = 0u; x < testTileDim; ++x)
+            {
+                indices[idx++] = start + x;
+                indices[idx++] = end + x;
+                indices[idx++] = start + 1u + x;
+
+                indices[idx++] = end + x;
+                indices[idx++] = end + 1u + x;
+                indices[idx++] = start + 1u + x;
+
+                // LOG("%d %d %d \t %d %d %d\n", start + x, end + x, start + 1u + x, end + x, end + 1u + x, start + 1u + x);
+            }
+        }
+
+        glGenVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_TEST_TILE]);
+        glGenBuffers(1, &g_gl.buffers[BUFFER_TEST_TILE_VERTEX]);
+        glGenBuffers(1, &g_gl.buffers[BUFFER_TEST_TILE_INDEX]);
+
+        glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_TEST_TILE]);
+    
+        glBindBuffer(GL_ARRAY_BUFFER, g_gl.buffers[BUFFER_TEST_TILE_VERTEX]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl.buffers[BUFFER_TEST_TILE_INDEX]);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.size(), indices.data(), GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(0u);
+        glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), offsetof(Vertex, pos));
+
+        glBindVertexArray(0u);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
+        glBindBuffer(GL_ARRAY_BUFFER, 0u);
+
+        g_app.testTileIndexCount = numIndices;
+    }
 }
 
 void render()
@@ -370,7 +427,25 @@ void render()
     glClearColor(0.12f, 0.68f, 0.87f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    if (g_app.showTest)
+    {
+
+        glUseProgram(g_gl.programs[PROGRAM_TEST]);
+        set_uni_mat4(g_gl.programs[PROGRAM_TEST], "u_projMatrix"    , g_camera.camera.getProjection());
+        set_uni_mat4(g_gl.programs[PROGRAM_TEST], "u_viewMatrix"    , g_camera.view);
+        set_uni_float(g_gl.programs[PROGRAM_TEST], "u_heightScale", g_app.heightScale);
+
+        glBindTexture(GL_TEXTURE_2D, g_gl.textures[TEXTURE_HEIGHTMAP]);
+
+        glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_TEST_TILE]);
+        // glDrawElements(GL_TRIANGLE_STRIP, g_app.tileIndexCount, GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, g_app.testTileIndexCount, GL_UNSIGNED_INT, nullptr);
+
+        // return;
+    }
+
     glUseProgram(g_gl.programs[PROGRAM_DEFAULT]);
+
     // glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, g_gl.textures[TEXTURE_HEIGHTMAP]);
 
@@ -378,9 +453,16 @@ void render()
     set_uni_mat4(g_gl.programs[PROGRAM_DEFAULT], "u_viewMatrix"    , g_camera.view);
     set_uni_vec2(g_gl.programs[PROGRAM_DEFAULT], "u_samplerDim"    , g_app.heightMapDim);
     set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_tileResolution", TILE_DIM);
+    set_uni_int(g_gl.programs[PROGRAM_DEFAULT], "u_morphEnable", g_app.morphEnabled);
+    set_uni_int(g_gl.programs[PROGRAM_DEFAULT], "u_showMorphDebug", g_app.showMorphDebug);
+    set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_heightScale", g_app.heightScale);
+    // set_uni_vec3(g_gl.programs[PROGRAM_DEFAULT], "u_color", {1.0f, 0.0f, 0.0f}};
 
 
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    if (g_app.showWireframe)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    else
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     const GLenum drawMode = GL_TRIANGLE_STRIP;
     static constexpr float tileDim = static_cast<float>(TILE_DIM);
@@ -394,33 +476,41 @@ void render()
         NONE  = 16
     };
 
-    auto renderTile = [drawMode](glm::vec2 translation, float scale, int blendDir) {
-        // const float expScale = scale / tileDim;
-        // glm::vec3 snapped_pos = glm::floor(g_camera.pos / expScale) * expScale;
-        glm::vec3 snapped_pos = glm::floor(g_camera.pos / scale) * scale;
 
-        glm::mat4 transform { 1.0f };
-        transform = glm::translate(transform, { translation.x, 0.0f, translation.y });
-        // transform = glm::translate(transform, { g_camera.pos.x, 0.0f, g_camera.pos.z });
-        transform = glm::translate(transform, { snapped_pos.x, 0.0f, snapped_pos.z });
-        transform = glm::scale(transform, { scale, 1.0f, scale });
-        set_uni_mat4(g_gl.programs[PROGRAM_DEFAULT], "u_modelMatrix", transform);
+    auto renderTile = [drawMode](glm::vec2 translation, float level, float scale, int blendDir) {
+        // glm::vec3 snapped_pos = glm::floor(g_camera.pos / scale) * scale;
+        // glm::vec3 snapped_pos = glm::floor(g_camera.pos);
+        glm::vec3 snapped_pos = g_camera.pos;
+        glm::vec3 nextLvlSnappedPos = glm::floor(g_camera.pos / (scale * 2)) * (scale * 2);
+        snapped_pos.y = 0.0f;
+        nextLvlSnappedPos.y = 0.0f;
+
+        // LOG("scale: %.2f  pos: %.2f %.2f  snapped_pos: %.2f %.2f  coarse_pos: %.2f %.2f  translation: %.2f %.2f\n", (float)scale, g_camera.pos.x, g_camera.pos.z, snapped_pos.x, snapped_pos.z, nextLvlSnappedPos.x, nextLvlSnappedPos.z, translation.x, translation.y);
+
+        glm::vec4 u_tileInfo { translation.x, translation.y, level, scale };
+        glm::vec2 u_viewPos  { g_camera.pos.x, g_camera.pos.z };
+        LOG("tileInfo: %.1f %1.f %d %d\n", u_tileInfo.x, u_tileInfo.y, (int)u_tileInfo.z, (int)u_tileInfo.w);
+
+        set_uni_vec4(g_gl.programs[PROGRAM_DEFAULT], "u_tileInfo", u_tileInfo);
+        set_uni_vec2(g_gl.programs[PROGRAM_DEFAULT], "u_viewPos" , u_viewPos);
+        set_uni_vec2(g_gl.programs[PROGRAM_DEFAULT], "u_coarseOffset" , { nextLvlSnappedPos.x + translation.x, nextLvlSnappedPos.z + translation.y });
+
+        // transform = glm::scale(transform, { scale, 1.0f, scale });
+
+        // set_uni_mat4(g_gl.programs[PROGRAM_DEFAULT], "u_modelMatrix", transform);
         set_uni_int(g_gl.programs[PROGRAM_DEFAULT], "u_morphDirection", blendDir);
 
         glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_TILE]);
         // glDrawElements(GL_TRIANGLE_STRIP, g_app.tileIndexCount, GL_UNSIGNED_INT, nullptr);
         glDrawElements(GL_TRIANGLES, g_app.tileIndexCount, GL_UNSIGNED_INT, nullptr);
     };
+    
 
     // Center Tiles
-    // renderTile({0,0}, tileDim);
-    // renderTile({0,-tileDim}, tileDim);
-    // renderTile({-tileDim,-tileDim}, tileDim);
-    // renderTile({-tileDim, 0}, tileDim);
-    renderTile({0,0}, 1, NONE);
-    renderTile({0,-tileDim}, 1, NONE);
-    renderTile({-tileDim,-tileDim}, 1, NONE);
-    renderTile({-tileDim, 0}, 1, NONE);
+    renderTile({0,0}, 1, 1, NONE);
+    // renderTile({0,-tileDim}, 1, 1, NONE);
+    // renderTile({-tileDim,-tileDim}, 1, 1, NONE);
+    // renderTile({-tileDim, 0}, 1, 1, NONE);
 
     // Rings
     for (uint32_t level = 0u; level < CLIPMAP_LEVELS; ++level)
@@ -428,29 +518,27 @@ void render()
         const float scale = (1<<level);
         const float translation = scale * tileDim;
 
-        set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_scale", scale);
-
         // Top
-        renderTile({0.0f, translation}, scale, TOP);
-        renderTile({translation, translation}, scale, TOP | RIGHT);
+        renderTile({0.0f, translation}, level, scale, TOP);
+        // renderTile({translation, translation}, level, scale, TOP | RIGHT);
 
-        // Right
-        renderTile({translation, 0.0f}, scale, RIGHT);
-        renderTile({translation, -translation}, scale, RIGHT);
+        // // Right
+        // renderTile({translation, 0.0f}, level, scale, RIGHT);
+        // renderTile({translation, -translation}, level, scale, RIGHT);
 
-        // Bot
-        renderTile({translation, -2.0f*translation}, scale, RIGHT | BOT);
-        renderTile({0.0f, -2.0f*translation}, scale, BOT);
-        renderTile({-translation, -2.0f*translation}, scale, BOT);
-        renderTile({-2.0f*translation, -2.0f*translation}, scale, BOT | LEFT);
+        // // Bot
+        // renderTile({translation, -2.0f*translation}, level, scale, BOT | RIGHT);
+        // renderTile({0.0f, -2.0f*translation}, level, scale, BOT);
+        // renderTile({-translation, -2.0f*translation}, level, scale, BOT);
+        // renderTile({-2.0f*translation, -2.0f*translation}, level, scale, BOT | LEFT);
 
-        // Left
-        renderTile({-2.0f*translation, -translation}, scale, LEFT);
-        renderTile({-2.0f*translation, 0.0f}, scale, LEFT);
+        // // Left
+        // renderTile({-2.0f*translation, -translation}, level, scale, LEFT);
+        // renderTile({-2.0f*translation, 0.0f}, level, scale, LEFT);
 
-        // Top
-        renderTile({-2.0f*translation, translation}, scale, TOP | LEFT);
-        renderTile({-translation, translation}, scale, TOP);
+        // // Top
+        // renderTile({-2.0f*translation, translation}, level, scale, TOP | LEFT);
+        // renderTile({-translation, translation}, level, scale, TOP);
     }
 
     glUseProgram(0u);
@@ -458,7 +546,23 @@ void render()
 
 void gui()
 {
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
 
+    if (ImGui::Begin("Gui"))
+    {
+        ImGui::Checkbox("Show Test", &g_app.showTest);
+        ImGui::Checkbox("Wireframe", &g_app.showWireframe);
+        ImGui::Checkbox("Morph", &g_app.morphEnabled);
+        ImGui::Checkbox("Morph Debug", &g_app.showMorphDebug);
+        ImGui::SliderFloat("Height Scale", &g_app.heightScale, 0.1f, 100.0f, "%.2f");
+        ImGui::InputFloat3("View Pos", &(g_camera.pos[0]));
+    }
+    ImGui::End();
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 void release()
@@ -503,12 +607,7 @@ int main()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-
-    // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    // ImGui::StyleColorsClassic();
-
-    // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 450");
 
@@ -521,18 +620,12 @@ int main()
     glEnable(GL_DEPTH_TEST);
 
     while (!glfwWindowShouldClose(window)) {
+
         glfwPollEvents();
 
         render();
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
         gui();
-
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
     }
