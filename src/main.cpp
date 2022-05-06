@@ -43,6 +43,7 @@ enum
     VERTEXARRAY_FILLER        = 2,
     VERTEXARRAY_CROSS         = 3,
     VERTEXARRAY_TRIM          = 4,
+    VERTEXARRAY_SEAM          = 5,
     VERTEXARRAY_COUNT
 };
 
@@ -58,6 +59,8 @@ enum
     BUFFER_CROSS_INDEX      = 7,
     BUFFER_TRIM_VERTEX      = 8,
     BUFFER_TRIM_INDEX       = 9,
+    BUFFER_SEAM_VERTEX      = 10,
+    BUFFER_SEAM_INDEX       = 11,
     BUFFER_COUNT
 };
 
@@ -73,6 +76,7 @@ struct AppManager {
     size_t fillerIndexCount = 0u;
     size_t crossIndexCount  = 0u;
     size_t trimIndexCount   = 0u;
+    size_t seamIndexCount   = 0u;
 
     size_t testTileIndexCount = 0;
     glm::vec2 heightMapDim { 0.0f, 0.0f };
@@ -83,6 +87,10 @@ struct AppManager {
     bool showMorphDebug = false;
     float heightScale = 1.0f;
     int rotType = 0;
+    bool freezeCamera = false;
+    bool seamsEnabled = false;
+
+    glm::vec3 frozenCamPos { 0.0f, 0.0f, 0.0f};
 } g_app;
 
 struct CameraManager {
@@ -257,8 +265,8 @@ GLuint create_texture_2d(const std::string tex_filepath)
 }
 
 
-constexpr uint32_t NUM_CLIPMAP_LEVELS = 2u;
-constexpr uint32_t TILE_RESOLUTION = 2u;
+constexpr uint32_t NUM_CLIPMAP_LEVELS = 5u;
+constexpr uint32_t TILE_RESOLUTION = 125u;
 
 
 void init()
@@ -269,7 +277,7 @@ void init()
     g_camera.camera.setPerspectiveProjection(glm::radians(50.f), VIEWER_WIDTH /  VIEWER_HEIGHT, 0.1f, 20000.f);
     updateCameraMatrix();
 
-    g_gl.textures[TEXTURE_HEIGHTMAP] =  create_texture_2d("../assets/test3.png");
+    g_gl.textures[TEXTURE_HEIGHTMAP] =  create_texture_2d("../assets/kauai.png");
 
     struct Vertex {
         float pos[3];
@@ -282,64 +290,6 @@ void init()
             : pos {x, y, z}
         {}
     };
-
-    {
-        std::array<Vertex, 4> vertices;
-
-        // Default trim shape is in the form of a "L"
-
-        // Hoizontal (bottom)
-        size_t v_idx = 0u;
-        for (int y = 0; y < 2u; ++y)
-        {
-            for (int x = 0; x < 2u; ++x)
-            {
-                vertices[v_idx++] = Vertex(x, 0.0f, y);
-            }
-        }
-
-        for (int i = 0; i < vertices.size(); i++)
-        {
-            vertices[i].pos[0] -= TILE_RESOLUTION * 2u + 1.5f;
-            vertices[i].pos[2] -= TILE_RESOLUTION * 2u + 1.5f;
-        }
-
-        std::array<uint32_t, 6u> indices;
-
-        // Horizontal (bottom)
-        size_t idx = 0;
-        for (uint32_t i = 0; i < 1u; ++i)
-        {
-            indices[idx++] = i;
-            indices[idx++] = i + 2;
-            indices[idx++] = i + 2 + 1u;
-
-            indices[idx++] = i;
-            indices[idx++] = i + 2 + 1u;
-            indices[idx++] = i + 1u;
-        }
-
-        glGenVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_TRIM]);
-        glGenBuffers(1, &g_gl.buffers[BUFFER_TRIM_VERTEX]);
-        glGenBuffers(1, &g_gl.buffers[BUFFER_TRIM_INDEX]);
-
-        glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_TRIM]);
-    
-        glBindBuffer(GL_ARRAY_BUFFER, g_gl.buffers[BUFFER_TRIM_VERTEX]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl.buffers[BUFFER_TRIM_INDEX]);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.size(), indices.data(), GL_STATIC_DRAW);
-
-        glEnableVertexAttribArray(0u);
-        glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), offsetof(Vertex, pos));
-
-        glBindVertexArray(0u);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
-        glBindBuffer(GL_ARRAY_BUFFER, 0u);
-
-        g_app.trimIndexCount = indices.size();
-    }
 
     // Tile mesh
     {
@@ -600,6 +550,143 @@ void init()
         glBindBuffer(GL_ARRAY_BUFFER, 0u);
 
         g_app.crossIndexCount = index_count;
+    }
+
+    // Trim mesh
+    {
+        constexpr size_t inner_width = (TILE_RESOLUTION * 4u + 1u) + 2u;
+        constexpr size_t vertex_count = 2u * 2u * inner_width;
+        std::array<Vertex, vertex_count> vertices;
+
+        // Hoizontal (bottom)
+        size_t v_idx = 0u;
+        for (int y = 0; y < 2u; ++y)
+        {
+            for (int x = 0; x < inner_width; ++x)
+            {
+                vertices[v_idx++] = Vertex(x, 0.0f, y);
+            }
+        }
+
+        // Vertical
+        for (int x = 0; x < 2u; ++x)
+        {
+            for (int y = 0; y < inner_width; ++y)
+            {
+                vertices[v_idx++] = Vertex(x, 0.0f, y);
+            }
+        }
+
+        for (int i = 0; i < vertices.size(); i++)
+        {
+            vertices[i].pos[0] -= TILE_RESOLUTION * 2u + 1.5f;
+            vertices[i].pos[2] -= TILE_RESOLUTION * 2u + 1.5f;
+        }
+
+        assert(v_idx == vertex_count);
+
+        constexpr size_t index_count = 2u * (inner_width - 1) * 6u;
+        std::array<uint32_t, index_count> indices;
+
+        // Horizontal (bottom)
+        size_t idx = 0;
+        for (int mesh = 0; mesh < 2; mesh++)
+        {
+            for (uint32_t i = 0; i < (inner_width - 1); ++i)
+            {
+                indices[idx++] = mesh * 2u * inner_width + i;
+                indices[idx++] = mesh * 2u * inner_width + i + inner_width;
+                indices[idx++] = mesh * 2u * inner_width + i + inner_width + 1u;
+
+                indices[idx++] = mesh * 2u * inner_width + i;
+                indices[idx++] = mesh * 2u * inner_width + i + inner_width + 1u;
+                indices[idx++] = mesh * 2u * inner_width + i + 1u;
+            }
+        }
+        
+        assert(idx == index_count);
+
+        glGenVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_TRIM]);
+        glGenBuffers(1, &g_gl.buffers[BUFFER_TRIM_VERTEX]);
+        glGenBuffers(1, &g_gl.buffers[BUFFER_TRIM_INDEX]);
+
+        glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_TRIM]);
+    
+        glBindBuffer(GL_ARRAY_BUFFER, g_gl.buffers[BUFFER_TRIM_VERTEX]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl.buffers[BUFFER_TRIM_INDEX]);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.size(), indices.data(), GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(0u);
+        glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), offsetof(Vertex, pos));
+
+        glBindVertexArray(0u);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
+        glBindBuffer(GL_ARRAY_BUFFER, 0u);
+
+        g_app.trimIndexCount = indices.size();
+    }
+
+    // Seam mesh
+    {
+        constexpr size_t inner_width = (TILE_RESOLUTION * 4u + 1u) + 1u;
+        constexpr size_t vertex_count = 4u * (inner_width);
+        std::array<Vertex, vertex_count> vertices;
+
+        for( int i = 0; i < inner_width; i++ )
+        {
+            vertices[ inner_width * 0 + i ] = { i, 0, 0 };
+            vertices[ inner_width * 1 + i ] = { inner_width, 0, i };
+            vertices[ inner_width * 2 + i ] = { inner_width - i, 0, inner_width };
+            vertices[ inner_width * 3 + i ] = { 0, 0, inner_width - i };
+        }
+
+        for (int i = 0; i < vertices.size(); ++i)
+        {
+            // vertices[i].pos[0] *= 1.0f - 1.0f / ((float)inner_width + 20);
+            // vertices[i].pos[2] *= 1.0f - 1.0f / ((float)inner_width + 20);
+
+            // vertices[i].pos[0] -= 0.5f;
+            // vertices[i].pos[2] -= 0.5f;
+        }
+
+        constexpr size_t index_count = inner_width * 6u;
+        std::array<uint32_t, index_count> indices;
+        size_t n = 0;
+
+        for( uint32_t i = 0; i < inner_width * 4; i += 2 )
+        {
+            indices[ n++ ] = i + 1;
+            indices[ n++ ] = i;
+            indices[ n++ ] = i + 2;
+        }
+
+        // make the last triangle wrap around
+        indices[ indices.size() - 1 ] = 0;
+
+        assert(n == indices.size());
+
+        glGenVertexArrays(1, &g_gl.vertexArrays[VERTEXARRAY_SEAM]);
+        glGenBuffers(1, &g_gl.buffers[BUFFER_SEAM_VERTEX]);
+        glGenBuffers(1, &g_gl.buffers[BUFFER_SEAM_INDEX]);
+
+        glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_SEAM]);
+    
+        glBindBuffer(GL_ARRAY_BUFFER, g_gl.buffers[BUFFER_SEAM_VERTEX]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_gl.buffers[BUFFER_SEAM_INDEX]);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.size(), indices.data(), GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(0u);
+        glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), offsetof(Vertex, pos));
+
+        glBindVertexArray(0u);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0u);
+        glBindBuffer(GL_ARRAY_BUFFER, 0u);
+
+        g_app.seamIndexCount = indices.size();
     }
 
 
@@ -892,7 +979,7 @@ void render()
 
         glm::vec4 u_tileInfo { translation.x, translation.y, level, scale };
         glm::vec2 u_viewPos  { g_camera.pos.x, g_camera.pos.z };
-        LOG("tileInfo: %.1f %1.f %d %d\n", u_tileInfo.x, u_tileInfo.y, (int)u_tileInfo.z, (int)u_tileInfo.w);
+        // LOG("tileInfo: %.1f %1.f %d %d\n", u_tileInfo.x, u_tileInfo.y, (int)u_tileInfo.z, (int)u_tileInfo.w);
 
         set_uni_vec4(g_gl.programs[PROGRAM_DEFAULT], "u_tileInfo", u_tileInfo);
         set_uni_vec2(g_gl.programs[PROGRAM_DEFAULT], "u_viewPos" , u_viewPos);
@@ -968,7 +1055,9 @@ void testRender()
     set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_tileResolution", static_cast<float>(TILE_RESOLUTION));
     set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_heightScale", g_app.heightScale);
 
-    const glm::vec2 view_pos { g_camera.pos.x, g_camera.pos.y };
+    const glm::vec2 view_pos = (g_app.freezeCamera) ?
+        glm::vec2(g_app.frozenCamPos.x, g_app.frozenCamPos.z) : 
+        glm::vec2(g_camera.pos.x, g_camera.pos.z );
     glm::mat4 identMat { 1.0f };
 
     // draw cross
@@ -1023,7 +1112,7 @@ void testRender()
             glDrawElements(GL_TRIANGLES, g_app.fillerIndexCount, GL_UNSIGNED_INT, nullptr);
         }
 
-        // Draw trim
+        // Draw trim/seam
         {
             if (level != NUM_CLIPMAP_LEVELS - 1)
             {
@@ -1036,33 +1125,56 @@ void testRender()
 
                 const float next_scale = scale * 2.0f;
                 const glm::vec2 next_snapped_pos = glm::floor(view_pos / next_scale) * next_scale;
-                const glm::vec2 tile_center = snapped_pos + glm::vec2(scale * 0.5f, scale * 0.5f); // - glm::vec2(level,level);
-                // const glm::vec2 tile_center = snapped_pos - glm::vec2(level, level);
 
-                glm::vec2 d = view_pos - next_snapped_pos;
-                uint32_t r = 0;
-                r |= d.x >= scale ? 0 : 2;
-                r |= d.y >= scale ? 0 : 1;
-
-                if (level == 0)
+                // Seam
                 {
-                    LOG("dx=%.2f  dy=%.2f scale=%d  r=%u  tile_center: %.2f %.2f\n", d.x, d.y, (int)scale, r, tile_center.x, tile_center.y);
-                    
+                    if (g_app.seamsEnabled)
+                    {
+                        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+                        glm::vec2 next_base = next_snapped_pos - glm::vec2(static_cast<float>(TILE_RESOLUTION << (level + 1), static_cast<float>(TILE_RESOLUTION << (level + 1))));
+
+                        set_uni_vec2 (g_gl.programs[PROGRAM_DEFAULT], "u_translation", next_base);
+                        set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_scale"      , scale    );
+                        set_uni_mat4 (g_gl.programs[PROGRAM_DEFAULT], "u_rotMatrix"  , identMat );
+                        // set_uni_vec3 (g_gl.programs[PROGRAM_DEFAULT], "u_debugColor" , { 1.0f, 0.0f, 0.0f });
+
+                        glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_SEAM]);
+                        glDrawElements(GL_TRIANGLES, g_app.seamIndexCount, GL_UNSIGNED_INT, nullptr);
+
+                        if (g_app.showWireframe)
+                            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                        else
+                            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                    }
                 }
 
-                glm::mat4 rotation_matrix { 1.0f };
-                // rotation_matrix = glm::rotate(rotation_matrix, -rotation[g_app.rotType], glm::vec3(0.0f, 1.0f, 0.0f));
-                rotation_matrix = glm::rotate(rotation_matrix, -rotation[r], glm::vec3(0.0f, 1.0f, 0.0f));
+                // Trim
+                {
+                    const glm::vec2 tile_center = snapped_pos + glm::vec2(scale * 0.5f, scale * 0.5f);
 
-                set_uni_vec2 (g_gl.programs[PROGRAM_DEFAULT], "u_translation", tile_center);
-                set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_scale"      , scale      );
-                set_uni_mat4 (g_gl.programs[PROGRAM_DEFAULT], "u_rotMatrix"  , rotation_matrix);
-                set_uni_vec3 (g_gl.programs[PROGRAM_DEFAULT], "u_debugColor" , { 0.0f, 0.0f, 1.0f });
-                set_uni_vec2 (g_gl.programs[PROGRAM_DEFAULT], "u_shift", { 0.5f, -0.5f });
- 
-                glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_TRIM]);
-                // glDrawElements(GL_TRIANGLES, g_app.trimIndexCount, GL_UNSIGNED_INT, nullptr);
-                glDrawElements(GL_TRIANGLES, g_app.trimIndexCount, GL_UNSIGNED_INT, nullptr);
+                    glm::vec2 d = view_pos - next_snapped_pos;
+                    uint32_t r = 0;
+                    r |= d.x >= scale ? 0 : 2;
+                    r |= d.y >= scale ? 0 : 1;
+
+                    if (level == 0)
+                    {
+                        // LOG("dx=%.2f  dy=%.2f scale=%d  r=%u  tile_center: %.2f %.2f\n", d.x, d.y, (int)scale, r, tile_center.x, tile_center.y);
+                        
+                    }
+
+                    glm::mat4 rotation_matrix { 1.0f };
+                    rotation_matrix = glm::rotate(rotation_matrix, -rotation[r], glm::vec3(0.0f, 1.0f, 0.0f));
+
+                    set_uni_vec2 (g_gl.programs[PROGRAM_DEFAULT], "u_translation", tile_center);
+                    set_uni_float(g_gl.programs[PROGRAM_DEFAULT], "u_scale"      , scale      );
+                    set_uni_mat4 (g_gl.programs[PROGRAM_DEFAULT], "u_rotMatrix"  , rotation_matrix);
+                    set_uni_vec3 (g_gl.programs[PROGRAM_DEFAULT], "u_debugColor" , { 0.0f, 0.0f, 1.0f });
+    
+                    glBindVertexArray(g_gl.vertexArrays[VERTEXARRAY_TRIM]);
+                    glDrawElements(GL_TRIANGLES, g_app.trimIndexCount, GL_UNSIGNED_INT, nullptr);
+                }
             }
         }
     }
@@ -1119,6 +1231,11 @@ void gui()
         ImGui::SliderFloat("Height Scale", &g_app.heightScale, 0.1f, 100.0f, "%.2f");
         ImGui::InputFloat3("View Pos", &(g_camera.pos[0]));
         ImGui::InputInt("Rot Type", &g_app.rotType);
+        if (ImGui::Checkbox("Freeze Camera", &g_app.freezeCamera))
+        {
+            g_app.frozenCamPos = g_camera.pos;
+        }
+        ImGui::Checkbox("Seams", &g_app.seamsEnabled);
     }
     ImGui::End();
 

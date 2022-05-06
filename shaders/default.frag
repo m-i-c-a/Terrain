@@ -12,5 +12,5 @@ void main(void)
 	o_color = vec4(vec3(abs(v_height)), 1.0);
 	o_color.r += v_morphColor;
 
-	o_color = vec4(u_debugColor, 1.0f);
+	o_color = vec4(u_debugColor + v_height, 1.0f);
 }

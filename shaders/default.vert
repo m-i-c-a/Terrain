@@ -36,8 +36,8 @@ void main()
 {
     vec2 pos = u_translation + (u_rotMatrix * vec4(a_pos, 1.0f)).xz * u_scale;
     float height = texelFetch(u_heightMap, ivec2(pos.xy), 0).x;
-    // gl_Position = u_projMatrix * u_viewMatrix * vec4(pos.x, height * u_heightScale, pos.y, 1.0f);
-    gl_Position = u_projMatrix * u_viewMatrix * vec4(pos.x, pos.y, u_shift.x, 1.0f);
+    gl_Position = u_projMatrix * u_viewMatrix * vec4(pos.x, height * u_heightScale, pos.y, 1.0f);
+    // gl_Position = u_projMatrix * u_viewMatrix * vec4(pos.x, pos.y, u_shift.x, 1.0f);
 
     v_height = height;
     v_morphColor = 0.0f;
