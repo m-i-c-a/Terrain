@@ -29,13 +29,15 @@ out float v_morphColor;
 
 uniform float u_scale;
 uniform vec2  u_translation;
+uniform mat4  u_rotMatrix;
+uniform vec2  u_shift;
 
 void main()
 {
-    vec2 pos = (a_pos.xz) * u_scale + u_translation;
+    vec2 pos = u_translation + (u_rotMatrix * vec4(a_pos, 1.0f)).xz * u_scale;
     float height = texelFetch(u_heightMap, ivec2(pos.xy), 0).x;
     // gl_Position = u_projMatrix * u_viewMatrix * vec4(pos.x, height * u_heightScale, pos.y, 1.0f);
-    gl_Position = u_projMatrix * u_viewMatrix * vec4(pos.x, pos.y, 0.0f, 1.0f);
+    gl_Position = u_projMatrix * u_viewMatrix * vec4(pos.x, pos.y, u_shift.x, 1.0f);
 
     v_height = height;
     v_morphColor = 0.0f;
