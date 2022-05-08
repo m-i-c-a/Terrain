@@ -17,8 +17,8 @@
 #include "Helpers.hpp"
 #include "Camera.hpp"
 
-constexpr uint32_t VIEWER_WIDTH  = 700u;
-constexpr uint32_t VIEWER_HEIGHT = 700u;
+constexpr uint32_t VIEWER_WIDTH  = 1200u;
+constexpr uint32_t VIEWER_HEIGHT = 900u;
 constexpr uint32_t PATCH_RESOLUTION = 64u;
 constexpr uint32_t TERRAIN_WIDTH = 1024; // we will render terrain in 1024x1024 grid
 constexpr uint32_t CLIPMAP_LEVELS = 1u;
@@ -277,7 +277,7 @@ void init()
     g_camera.camera.setPerspectiveProjection(glm::radians(50.f), VIEWER_WIDTH /  VIEWER_HEIGHT, 0.1f, 20000.f);
     updateCameraMatrix();
 
-    g_gl.textures[TEXTURE_HEIGHTMAP] =  create_texture_2d("../assets/kauai.png");
+    g_gl.textures[TEXTURE_HEIGHTMAP] =  create_texture_2d("../assets/test3.png");
 
     struct Vertex {
         float pos[3];
@@ -1229,7 +1229,10 @@ void gui()
         ImGui::Checkbox("Morph", &g_app.morphEnabled);
         ImGui::Checkbox("Morph Debug", &g_app.showMorphDebug);
         ImGui::SliderFloat("Height Scale", &g_app.heightScale, 0.1f, 100.0f, "%.2f");
-        ImGui::InputFloat3("View Pos", &(g_camera.pos[0]));
+        if (ImGui::InputFloat3("View Pos", &(g_camera.pos[0])))
+        {
+            updateCameraMatrix();
+        }
         ImGui::InputInt("Rot Type", &g_app.rotType);
         if (ImGui::Checkbox("Freeze Camera", &g_app.freezeCamera))
         {
