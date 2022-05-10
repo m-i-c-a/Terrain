@@ -3,13 +3,13 @@
 
 # compile C with /usr/bin/cc
 # compile CXX with /usr/bin/c++
-C_FLAGS = -g  
+C_FLAGS = -O3 -DNDEBUG  
 
 C_DEFINES = 
 
 C_INCLUDES = -I/home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui -I/home/mica/Desktop/UTD/Geometry-Clipmaps/external/imgui/backends -I/home/mica/Desktop/UTD/Geometry-Clipmaps/external/glad/include -I/home/mica/Desktop/UTD/Geometry-Clipmaps/external 
 
-CXX_FLAGS = -g   -std=gnu++2a
+CXX_FLAGS = -O3 -DNDEBUG   -std=gnu++2a
 
 CXX_DEFINES = 
 
